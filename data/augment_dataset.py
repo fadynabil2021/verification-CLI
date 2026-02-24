@@ -1,101 +1,153 @@
+"""data/augment_dataset.py — Dataset augmentation pipeline.
+
+Applies four augmentation strategies to expand a small base JSONL dataset
+to 400+ samples suitable for fine-tuning:
+
+    1. **Noise Injection** — prepends 1–5 random "passing" log lines before the
+       failure signature, teaching the model to find the signal in noise.
+
+    2. **Assertion Variation** — rewrites the assertion message using 2–3
+       alternative phrasings with identical semantic content.
+
+    3. **Cycle Jitter** — randomises the cycle number in log messages,
+       preventing the model from memorising cycle offsets.
+
+    4. **Module Stamp** — tags each sample with a module name prefix
+       (UART, SPI, GPIO, I2C, FIFO) so the model learns module-agnostic
+       failure patterns.
+
+Usage:
+    python -m data.augment_dataset \
+        --input  data/dataset.jsonl \
+        --output data/dataset_augmented.jsonl \
+        --n-aug  16          # augmentations per base sample
+"""
+from __future__ import annotations
+
 import argparse
 import json
 import random
+import re
 from copy import deepcopy
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
-# Configuration for augmentation
-_MODULES = ["fifo", "uart_tx", "spi_master", "gpio", "i2c_master"]
-
-_NOISE_LINES = [
-    "[INFO] Initializing testbench...",
-    "[INFO] Resetting DUT...",
-    "[INFO] Sequence started.",
-    "[INFO] Configuration phase complete.",
-    "[DEBUG] Transaction CRC matched.",
-    "[DEBUG] Buffer level: {count} words.",
-    "[DEBUG] Clock cycle: {cycle}.",
-    "[WARN] Minor jitter detected on sclk.",
-    "[INFO] Phase shifted for sampling.",
+# ---------------------------------------------------------------------------
+# Noise lines that appear in real "passing" simulation output
+# ---------------------------------------------------------------------------
+_NOISE_LINES: List[str] = [
+    "- ReadData: 0x00",
+    "- WriteData: 0xff",
+    "Simulation state: RUNNING",
+    "Clock edge: posedge at time {cycle}ns",
+    "Memory access: addr=0x{addr:04x} data=0x{data:02x}",
+    "DUT: signal_stable, no change",
+    "TB: waiting for handshake...",
+    "verilator: Warning-UNOPTFLAT: Signal unoptimized: count",
+    "Coverage: 67.4% branch, 81.2% line",
+    "%Info: testbench/tb.sv:42: $display called",
+    "Assertion monitor: all passing (cycle {cycle})",
+    "Statistics: {cycle} cycles elapsed, 0 failures",
+    "FSM state: IDLE",
+    "FSM state: TRANS",
+    "DUT output: ready=1 valid=0",
 ]
 
-_ASSERTION_VARIANTS = {
+# ---------------------------------------------------------------------------
+# Alternative assertion phrasings (keyed by canonical label)
+# ---------------------------------------------------------------------------
+_ASSERTION_VARIANTS: Dict[str, List[str]] = {
     "Off-by-One Error": [
-        "ASSERT_FAIL: Counter reached {count} at cycle {cycle}. Expected < {count}.",
-        "TB_LOG|Cycle {cycle}|FIFO_BOUND_FAIL|count={count}|max=16",
-        "ERROR: Pointer overflow at address {addr}."
+        "ASSERT_FAIL: Counter overflow at cycle {cycle}",
+        "ASSERT_FAIL: Counter exceeded MAX_DEPTH — count={count} at cycle {cycle}",
+        "ASSERT_FAIL: FIFO_COUNTER_OVERFLOW triggered (count={count}) at time {cycle}ns",
+        "ERROR: boundary check failed — count value {count} >= MAX at cycle {cycle}",
+        "ASSERT ID FIFO_COUNTER_OVERFLOW: count={count} violated upper bound at cycle {cycle}",
     ],
     "Handshake Protocol Violation": [
-        "ASSERT_FAIL: Handshake timeout at cycle {cycle}. Valid high but Ready low.",
-        "TB_LOG|Cycle {cycle}|READY_STUCK|tx_valid=1|ready=0",
-        "PROTOCOL_ERR: Unexpected signal state at cycle {cycle}."
+        "ASSERT_FAIL: Backpressure violation — data pushed while ready=0",
+        "ASSERT_FAIL: Backpressure violation write_fire=1 ready=0 at cycle {cycle}",
+        "ASSERT_FAIL: protocol assertion tripped — valid=1 ready=0 at cycle {cycle}",
+        "ASSERT ID FIFO_BACKPRESSURE_WRITE: write_fire=1 ready=0 at cycle {cycle}",
+        "ERROR: handshake invariant violated — write occurred without ready at cycle {cycle}",
     ],
     "Data Integrity Error": [
-        "ASSERT_FAIL: Scoreboard mismatch at cycle {cycle}. Expected {expected}, got {actual}.",
-        "TB_LOG|Cycle {cycle}|DATA_MISMATCH|exp={expected}|act={actual}",
-        "DATA_CORRUPT: Mismatch on bus [31:0] at cycle {cycle}."
+        "SCOREBOARD_FAIL: Data mismatch at cycle {cycle}",
+        "SCOREBOARD_FAIL: Data mismatch expected={expected} actual={actual} at cycle {cycle}",
+        "ASSERT ID SB_DATA_MISMATCH: expected={expected} actual={actual} at cycle {cycle}",
+        "ERROR: scoreboard check failed — read data={actual} expected={expected} cycle={cycle}",
+        "SCOREBOARD_FAIL: Unexpected data actual={actual} at cycle {cycle}",
     ],
-    "Overflow Guard Removal": [
-        "ASSERT_FAIL: Counter overflow at cycle {cycle}. count={count}",
-        "TB_LOG|Cycle {cycle}|OVERFLOW_FAIL|max=64|count={count}",
-        "CRITICAL: Resource exhaustion detected."
-    ],
-    "Reset Polarity Inversion": [
-        "ASSERT_FAIL: DUT active while reset asserted at cycle {cycle}.",
-        "TB_LOG|Cycle {cycle}|RESET_POLARITY|rst_n=0|active=1",
-        "UART_IDLE_HIGH: TX line low after reset."
-    ],
-    "Enable Signal Polarity Flip": [
-        "ASSERT_FAIL: Write observed when wr_en is 0 at cycle {cycle}.",
-        "TB_LOG|Cycle {cycle}|WRITE_DISABLE_FAIL|wr_en=0|written={data}",
-        "SPI_CS_DEASSERTED: Activity outside Chip Select."
+    "Assignment Semantics Change": [
+        "SCOREBOARD_FAIL: Data mismatch at cycle {cycle}",
+        "SCOREBOARD_FAIL: Data mismatch expected={expected} actual={actual} at cycle {cycle}",
+        "ASSERT ID SB_DATA_MISMATCH: unexpected value at cycle {cycle}",
+        "ERROR: data path corruption detected at cycle {cycle}",
     ],
     "Edge Sensitivity Flip": [
-        "ASSERT_FAIL: State transition on wrong edge at cycle {cycle}.",
-        "TB_LOG|Cycle {cycle}|EDGE_FAIL|clock=negedge|triggered=1",
-        "TIMING_VIOLATION: Setup time violation."
+        "ASSERT_FAIL: Counter overflow at cycle {cycle}",
+        "ASSERT_FAIL: Clock edge violation — negedge sensitivity at cycle {cycle}",
+        "ASSERT ID CLOCK_EDGE_FAIL: unexpected sensitivity triggered at cycle {cycle}",
+        "ERROR: flip-flop sampled on wrong clock edge at cycle {cycle}",
+    ],
+    "Reset Polarity Inversion": [
+        "ASSERT_FAIL: Backpressure violation — data pushed while ready=0",
+        "ASSERT_FAIL: Reset polarity error — dut active during reset assertion at cycle {cycle}",
+        "ASSERT ID RESET_POLARITY: dut not reset when rst_n=1 at cycle {cycle}",
+        "ERROR: DUT active while reset should be asserted (active-low inversion) at cycle {cycle}",
+    ],
+    "Enable Signal Polarity Flip": [
+        "SCOREBOARD_FAIL: Data mismatch expected={expected} actual={actual} at cycle {cycle}",
+        "ASSERT_FAIL: Write occurred while wr_en=0 at cycle {cycle}",
+        "ASSERT ID ENABLE_POLARITY: operation on disabled enable signal at cycle {cycle}",
+        "ERROR: data written when wr_en was low — enable polarity inverted at cycle {cycle}",
     ],
     "Data Width Truncation": [
-        "ASSERT_FAIL: Data width mismatch. Expected 8 bits, got {count}.",
-        "TB_LOG|Cycle {cycle}|WIDTH_FAIL|exp=8|act={count}",
-        "PARITY_ERR: Data bus corruption detected."
+        "SCOREBOARD_FAIL: Data mismatch expected={expected} actual={actual} at cycle {cycle}",
+        "ASSERT ID SB_WIDTH_MISMATCH: MSB truncated in shift register at cycle {cycle}",
+        "ERROR: shift register MSB lost — rx_data={actual} expected={expected} at cycle {cycle}",
+        "SCOREBOARD_FAIL: Unexpected data actual={actual} at cycle {cycle}",
+    ],
+    "Overflow Guard Removal": [
+        "ASSERT_FAIL: Counter overflow at cycle {cycle}",
+        "ASSERT_FAIL: Baud counter overflow — baud_shadow={count} at cycle {cycle}",
+        "ASSERT ID UART_BAUD_OVERFLOW: counter exceeded limit at cycle {cycle}",
+        "ERROR: timer overrun — watchdog expired at cycle {cycle}",
     ],
     "Parity Check Removal": [
-        "ASSERT_FAIL: Parity error not detected at cycle {cycle}.",
-        "TB_LOG|Cycle {cycle}|PARITY_FAIL|parity_expected=1|found=0",
-        "PROTOCOL_ERR: Invalid parity bit."
+        "ASSERT_FAIL: UART parity error asserted at cycle {cycle}",
+        "SCOREBOARD_FAIL: Frame integrity check failed at cycle {cycle}",
+        "ASSERT ID UART_PARITY_ERROR: parity_err=1 at cycle {cycle}",
+        "ERROR: parity mismatch — received frame has incorrect parity bit at cycle {cycle}",
     ],
-    "Handshake Protocol Violation (UART)": [
-        "ASSERT_FAIL: UART Ready stuck after byte transfer at cycle {cycle}.",
-        "TB_LOG|Cycle {cycle}|UART_READY_STUCK|busy=1|done=1"
-    ]
 }
 
-_SUFFIX_LINES = [
-    "Simulation failed at cycle {cycle}.",
-    "Cleaning up and exiting...",
+_MODULES: List[str] = ["fifo", "uart_tx", "spi_master", "gpio", "i2c_master"]
+
+_SUFFIX_LINES: List[str] = [
+    "Simulation terminated due to assertion failure.",
+    "Simulation terminated...",
     "Aborted by testbench at cycle {cycle}.",
     "%Error: simulation aborted after first failure.",
     "VCD dump closed.",
 ]
 
 
-def _rand_cycle(rng: random.Random, base: int = 20, spread: int = 200) -> int:
-    return base + rng.randint(0, spread)
+def _rand_cycle(base: int = 20, spread: int = 200) -> int:
+    return base + random.randint(0, spread)
 
 
-def _rand_int(rng: random.Random, lo: int = 0, hi: int = 255) -> int:
-    return rng.randint(lo, hi)
+def _rand_int(lo: int = 0, hi: int = 255) -> int:
+    return random.randint(lo, hi)
 
 
-def _fill(template: str, rng: random.Random) -> str:
-    cycle = _rand_cycle(rng)
-    count = _rand_cycle(rng, base=16, spread=48)
-    expected = _rand_int(rng, 5, 250)
-    actual = _rand_int(rng, 0, 255)
-    addr = _rand_int(rng, 0, 0xFFFF)
-    data = _rand_int(rng, 0, 0xFF)
+def _fill(template: str) -> str:
+    cycle = _rand_cycle()
+    count = _rand_cycle(base=16, spread=48)
+    expected = _rand_int(5, 250)
+    actual = _rand_int(0, 255)
+    addr = _rand_int(0, 0xFFFF)
+    data = _rand_int(0, 0xFF)
     return (
         template
         .replace("{cycle}", str(cycle))
@@ -107,20 +159,20 @@ def _fill(template: str, rng: random.Random) -> str:
     )
 
 
-def _noise_prefix(rng: random.Random, n_lines: int = 3) -> str:
-    lines = [_fill(rng.choice(_NOISE_LINES), rng) for _ in range(n_lines)]
+def _noise_prefix(n_lines: int = 3) -> str:
+    lines = [_fill(random.choice(_NOISE_LINES)) for _ in range(n_lines)]
     return "\n".join(lines) + "\n"
 
 
-def _alternate_assertion(label: str, rng: random.Random) -> str:
+def _alternate_assertion(label: str) -> str:
     variants = _ASSERTION_VARIANTS.get(label)
     if not variants:
-        return _fill("ASSERT_FAIL: Unknown failure at cycle {cycle}", rng)
-    return _fill(rng.choice(variants), rng)
+        return _fill("ASSERT_FAIL: Unknown failure at cycle {cycle}")
+    return _fill(random.choice(variants))
 
 
-def _suffix(rng: random.Random) -> str:
-    return _fill(rng.choice(_SUFFIX_LINES), rng)
+def _suffix() -> str:
+    return _fill(random.choice(_SUFFIX_LINES))
 
 
 def augment_sample(row: Dict, n_aug: int, rng: random.Random) -> List[Dict]:
@@ -129,25 +181,23 @@ def augment_sample(row: Dict, n_aug: int, rng: random.Random) -> List[Dict]:
     results: List[Dict] = []
 
     for i in range(n_aug):
-        # Deterministic state per augmentation index
-        aug_rng = random.Random(rng.getrandbits(32) + i)
         aug = deepcopy(row)
 
         # Strategy 1: noise injection (50% probability, 1–4 extra lines)
         noise = ""
-        if aug_rng.random() > 0.5:
-            noise = _noise_prefix(aug_rng, aug_rng.randint(1, 4))
+        if rng.random() > 0.5:
+            noise = _noise_prefix(rng.randint(1, 4))
 
         # Strategy 2: assertion variation
-        core_assertion = _alternate_assertion(label, aug_rng)
+        core_assertion = _alternate_assertion(label)
 
-        # Strategy 3: cycle jitter (handled in _fill)
-        suffix = _suffix(aug_rng)
+        # Strategy 3: cycle jitter (already in _fill via random cycle)
+        suffix = _suffix()
 
         aug["log"] = noise + core_assertion + "\n" + suffix
         aug["augmented"] = True
         aug["aug_id"] = i
-        aug["module"] = aug_rng.choice(_MODULES)
+        aug["module"] = rng.choice(_MODULES)
 
         results.append(aug)
 
@@ -190,12 +240,11 @@ def main() -> None:
     out_path = Path(args.output)
 
     rows: List[Dict] = []
-    if in_path.exists():
-        with in_path.open("r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if line:
-                    rows.append(json.loads(line))
+    with in_path.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                rows.append(json.loads(line))
 
     print(f"Loaded {len(rows)} base samples from {in_path}")
     augmented = augment_dataset(rows, n_aug=args.n_aug, seed=args.seed)
