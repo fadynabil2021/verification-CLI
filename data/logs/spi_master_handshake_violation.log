@@ -1,0 +1,3 @@
+ASSERT_FAIL: SPI CS_N deasserted during active transfer at cycle 92
+TB_LOG|kind=ASSERT_FAIL|assert_id=SPI_CS_DEASSERTED_DURING_TRANSFER|cycle=92|signals=cs_n=1,sclk=1
+Simulation terminated...

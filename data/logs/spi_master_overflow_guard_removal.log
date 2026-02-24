@@ -1,0 +1,3 @@
+ASSERT_FAIL: SPI transfer watchdog expired — bit counter overflowed at cycle 200
+TB_LOG|kind=ASSERT_FAIL|assert_id=SPI_BIT_COUNTER_OVERFLOW|cycle=200|signals=bit_cnt=255,clk_cnt=0
+Simulation terminated...

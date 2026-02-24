@@ -1,0 +1,3 @@
+SCOREBOARD_FAIL: I2C frame integrity check failed at cycle 480
+TB_LOG|kind=SCOREBOARD_FAIL|assert_id=SB_I2C_DATA|expected=255|actual=127|cycle=480|signals=state=ACK2
+Simulation terminated...

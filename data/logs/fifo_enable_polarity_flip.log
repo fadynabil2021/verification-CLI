@@ -1,0 +1,3 @@
+SCOREBOARD_FAIL: Data mismatch expected=15 actual=0 at cycle 50
+TB_LOG|kind=SCOREBOARD_FAIL|assert_id=SB_DATA_MISMATCH|expected=15|actual=0|cycle=50|signals=count=0,wr_en=0,rd_en=0
+Simulation terminated...

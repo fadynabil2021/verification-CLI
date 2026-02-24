@@ -1,0 +1,3 @@
+SCOREBOARD_FAIL: GPIO data_out mismatch expected=0xA5 actual=0x25 at cycle 20
+TB_LOG|kind=SCOREBOARD_FAIL|assert_id=SB_GPIO|expected=165|actual=37|cycle=20|signals=dir_reg=0xFF,in_reg=0xA5
+Simulation terminated...

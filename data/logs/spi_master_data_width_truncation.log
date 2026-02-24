@@ -1,0 +1,3 @@
+SCOREBOARD_FAIL: SPI MISO mismatch expected=0xF0 actual=0x70 at cycle 140
+TB_LOG|kind=SCOREBOARD_FAIL|assert_id=SB_SPI_MISO_MISMATCH|expected=240|actual=112|cycle=140|signals=shift_rx=0x70
+Simulation terminated...

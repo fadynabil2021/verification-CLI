@@ -1,0 +1,3 @@
+ASSERT_FAIL: Baud counter overflow — baud_shadow=868 at cycle 100
+TB_LOG|kind=ASSERT_FAIL|assert_id=UART_BAUD_OVERFLOW|baud_shadow=868|cycle=100|signals=baud_shadow=868,tx=0,ready=0
+Simulation terminated...

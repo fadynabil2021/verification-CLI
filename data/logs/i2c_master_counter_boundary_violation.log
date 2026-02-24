@@ -1,0 +1,3 @@
+ASSERT_FAIL: I2C bit counter overflow — clock ticked one extra time at cycle 300
+TB_LOG|kind=ASSERT_FAIL|assert_id=I2C_BIT_OVERFLOW|cycle=300|signals=bit_cnt=255,clk_cnt=0,state=ADDR
+Simulation terminated...

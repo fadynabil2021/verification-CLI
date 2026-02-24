@@ -1,0 +1,3 @@
+SCOREBOARD_FAIL: Frame mismatch expected=0xC3 actual=0x43 at cycle 320
+TB_LOG|kind=SCOREBOARD_FAIL|assert_id=SB_UART_FRAME|expected=195|actual=67|cycle=320|signals=shift_reg=0x43
+Simulation terminated...

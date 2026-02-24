@@ -1,0 +1,3 @@
+ASSERT_FAIL: GPIO IRQ stuck high for >1 cycle at cycle 30
+TB_LOG|kind=ASSERT_FAIL|assert_id=GPIO_IRQ_STUCK|cycle=30|signals=irq=1,pin_drive=0x01
+Simulation terminated...

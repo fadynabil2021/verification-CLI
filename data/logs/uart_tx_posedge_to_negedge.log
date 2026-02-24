@@ -1,0 +1,3 @@
+ASSERT_FAIL: Clock edge violation — negedge sensitivity at cycle 44
+TB_LOG|kind=ASSERT_FAIL|assert_id=UART_BAUD_OVERFLOW|cycle=44|signals=tx=1,ready=0,valid=1,baud_shadow=192
+Simulation terminated...

@@ -1,0 +1,3 @@
+SCOREBOARD_FAIL: I2C data byte mismatch expected=0xF5 actual=0x75 at cycle 520
+TB_LOG|kind=SCOREBOARD_FAIL|assert_id=SB_I2C_DATA|expected=245|actual=117|cycle=520|signals=shift_reg=0x75
+Simulation terminated...

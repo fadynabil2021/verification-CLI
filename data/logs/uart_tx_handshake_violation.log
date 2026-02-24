@@ -1,0 +1,3 @@
+ASSERT_FAIL: UART ready stayed high after valid handshake at cycle 22
+TB_LOG|kind=ASSERT_FAIL|assert_id=UART_READY_STUCK|cycle=22|signals=ready=1,valid=1,tx=1
+Simulation terminated...

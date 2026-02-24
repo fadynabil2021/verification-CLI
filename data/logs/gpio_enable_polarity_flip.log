@@ -1,0 +1,3 @@
+ASSERT_FAIL: Write occurred while wr_en=0 at cycle 8
+TB_LOG|kind=ASSERT_FAIL|assert_id=ENABLE_POLARITY|cycle=8|signals=wr_en=0,data_in=0x55,dir_reg=0xF0
+Simulation terminated...

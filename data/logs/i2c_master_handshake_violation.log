@@ -1,0 +1,3 @@
+ASSERT_FAIL: I2C NACK received during ACK window at cycle 450
+TB_LOG|kind=ASSERT_FAIL|assert_id=I2C_NACK_ERROR|cycle=450|signals=nack=1,sda=1,scl=1
+Simulation terminated...

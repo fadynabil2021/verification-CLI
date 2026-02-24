@@ -1,0 +1,3 @@
+SCOREBOARD_FAIL: Data mismatch expected=165 actual=0 at cycle 210
+TB_LOG|kind=SCOREBOARD_FAIL|assert_id=SB_UART_FRAME|expected=165|actual=0|cycle=210|signals=tx=0,ready=1,valid=0
+Simulation terminated...
