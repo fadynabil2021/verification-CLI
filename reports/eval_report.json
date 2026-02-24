@@ -1,0 +1,23 @@
+{
+  "total": 5,
+  "correct": 2,
+  "accuracy": 0.4,
+  "unknown_rate": 0.0,
+  "confusion": {
+    "Assignment Semantics Change": {
+      "Data Integrity Error": 1
+    },
+    "Edge Sensitivity Flip": {
+      "Off-by-One Error": 1
+    },
+    "Reset Polarity Inversion": {
+      "Handshake Protocol Violation": 1
+    },
+    "Off-by-One Error": {
+      "Off-by-One Error": 1
+    },
+    "Handshake Protocol Violation": {
+      "Handshake Protocol Violation": 1
+    }
+  }
+}

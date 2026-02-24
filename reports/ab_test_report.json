@@ -1,0 +1,8 @@
+{
+  "samples": 20,
+  "manual_p50_min": 44.5,
+  "ai_p50_min": 19.5,
+  "manual_p95_min": 67.0,
+  "ai_p95_min": 26.0,
+  "time_reduction_p50": 0.5617977528089888
+}

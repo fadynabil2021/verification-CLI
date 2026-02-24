@@ -1,0 +1,128 @@
+{
+  "total": 20,
+  "correct": 18,
+  "accuracy": 0.9,
+  "unknown_rate": 0.05,
+  "details": [
+    {
+      "id": "natural_001",
+      "expected": "Off-by-One Error",
+      "predicted": "Off-by-One Error",
+      "confidence": 0.87
+    },
+    {
+      "id": "natural_002",
+      "expected": "Handshake Protocol Violation",
+      "predicted": "Handshake Protocol Violation",
+      "confidence": 0.88
+    },
+    {
+      "id": "natural_003",
+      "expected": "Data Integrity Error",
+      "predicted": "Data Integrity Error",
+      "confidence": 0.85
+    },
+    {
+      "id": "natural_004",
+      "expected": "Overflow Guard Removal",
+      "predicted": "Overflow Guard Removal",
+      "confidence": 0.87
+    },
+    {
+      "id": "natural_005",
+      "expected": "Reset Polarity Inversion",
+      "predicted": "Reset Polarity Inversion",
+      "confidence": 0.84
+    },
+    {
+      "id": "natural_006",
+      "expected": "Parity Check Removal",
+      "predicted": "Parity Check Removal",
+      "confidence": 0.88
+    },
+    {
+      "id": "natural_007",
+      "expected": "Data Integrity Error",
+      "predicted": "Data Integrity Error",
+      "confidence": 0.72
+    },
+    {
+      "id": "natural_008",
+      "expected": "Overflow Guard Removal",
+      "predicted": "Overflow Guard Removal",
+      "confidence": 0.87
+    },
+    {
+      "id": "natural_009",
+      "expected": "Handshake Protocol Violation",
+      "predicted": "Handshake Protocol Violation",
+      "confidence": 0.88
+    },
+    {
+      "id": "natural_010",
+      "expected": "Enable Signal Polarity Flip",
+      "predicted": "Enable Signal Polarity Flip",
+      "confidence": 0.85
+    },
+    {
+      "id": "natural_011",
+      "expected": "Enable Signal Polarity Flip",
+      "predicted": "Enable Signal Polarity Flip",
+      "confidence": 0.85
+    },
+    {
+      "id": "natural_012",
+      "expected": "Overflow Guard Removal",
+      "predicted": "Overflow Guard Removal",
+      "confidence": 0.85
+    },
+    {
+      "id": "natural_013",
+      "expected": "Data Integrity Error",
+      "predicted": "Data Integrity Error",
+      "confidence": 0.72
+    },
+    {
+      "id": "natural_014",
+      "expected": "Reset Polarity Inversion",
+      "predicted": "Reset Polarity Inversion",
+      "confidence": 0.84
+    },
+    {
+      "id": "natural_015",
+      "expected": "Data Width Truncation",
+      "predicted": "Data Integrity Error",
+      "confidence": 0.72
+    },
+    {
+      "id": "natural_016",
+      "expected": "Data Integrity Error",
+      "predicted": "Data Integrity Error",
+      "confidence": 0.85
+    },
+    {
+      "id": "natural_017",
+      "expected": "Reset Polarity Inversion",
+      "predicted": "Reset Polarity Inversion",
+      "confidence": 0.84
+    },
+    {
+      "id": "natural_018",
+      "expected": "Unknown",
+      "predicted": "Unknown",
+      "confidence": 0.3
+    },
+    {
+      "id": "natural_019",
+      "expected": "Data Width Truncation",
+      "predicted": "Data Integrity Error",
+      "confidence": 0.72
+    },
+    {
+      "id": "natural_020",
+      "expected": "Handshake Protocol Violation",
+      "predicted": "Handshake Protocol Violation",
+      "confidence": 0.88
+    }
+  ]
+}
