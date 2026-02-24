@@ -1,0 +1,2 @@
+%Error: data/raw/fifo.v:61: Assertion failed in TOP.fifo_tb.dut
+ASSERT_FAIL: protocol assertion tripped at cycle 90 id=FIFO_BACKPRESSURE_WRITE signals=write_fire=1 ready=0 count=8

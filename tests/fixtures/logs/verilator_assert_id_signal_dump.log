@@ -1,0 +1,2 @@
+%Error: data/raw/fifo.v:58: Assertion failed in TOP.fifo_tb.dut
+ASSERT_FAIL: Counter overflow count=17 at cycle 230 ASSERT_ID=FIFO_COUNTER_OVERFLOW signal_dump: count=17 wptr=4 rptr=3 full=1 empty=0 ready=1 valid=1 wr_en=1 rd_en=0
