@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  model-server:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: verilog-ai:latest
+    command: ["python", "-m", "model.server"]
+    ports:
+      - "8001:8001"
+    environment:
+      - MODEL_NAME=google/flan-t5-small
+      - PORT=8001
+    restart: unless-stopped
+
+  api-gateway:
+    image: verilog-ai:latest
+    depends_on:
+      - model-server
+    ports:
+      - "8000:8000"
+    environment:
+      - MODEL_SERVER_ENABLED=1
+      - MODEL_SERVER_URL=http://model-server:8001
+      - MODEL_SERVER_FALLBACK=1
+      - CONFIDENCE_THRESHOLD=0.7
+      - CIRCUIT_FAILURE_THRESHOLD=5
+      - CIRCUIT_RECOVERY_TIMEOUT_SEC=60
+    restart: unless-stopped
