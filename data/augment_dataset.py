@@ -133,21 +133,21 @@ _SUFFIX_LINES: List[str] = [
 ]
 
 
-def _rand_cycle(base: int = 20, spread: int = 200) -> int:
-    return base + random.randint(0, spread)
+def _rand_cycle(rng: random.Random, base: int = 20, spread: int = 200) -> int:
+    return base + rng.randint(0, spread)
 
 
-def _rand_int(lo: int = 0, hi: int = 255) -> int:
-    return random.randint(lo, hi)
+def _rand_int(rng: random.Random, lo: int = 0, hi: int = 255) -> int:
+    return rng.randint(lo, hi)
 
 
-def _fill(template: str) -> str:
-    cycle = _rand_cycle()
-    count = _rand_cycle(base=16, spread=48)
-    expected = _rand_int(5, 250)
-    actual = _rand_int(0, 255)
-    addr = _rand_int(0, 0xFFFF)
-    data = _rand_int(0, 0xFF)
+def _fill(template: str, rng: random.Random) -> str:
+    cycle = _rand_cycle(rng)
+    count = _rand_cycle(rng, base=16, spread=48)
+    expected = _rand_int(rng, 5, 250)
+    actual = _rand_int(rng, 0, 255)
+    addr = _rand_int(rng, 0, 0xFFFF)
+    data = _rand_int(rng, 0, 0xFF)
     return (
         template
         .replace("{cycle}", str(cycle))
@@ -159,20 +159,20 @@ def _fill(template: str) -> str:
     )
 
 
-def _noise_prefix(n_lines: int = 3) -> str:
-    lines = [_fill(random.choice(_NOISE_LINES)) for _ in range(n_lines)]
+def _noise_prefix(rng: random.Random, n_lines: int = 3) -> str:
+    lines = [_fill(rng.choice(_NOISE_LINES), rng) for _ in range(n_lines)]
     return "\n".join(lines) + "\n"
 
 
-def _alternate_assertion(label: str) -> str:
+def _alternate_assertion(label: str, rng: random.Random) -> str:
     variants = _ASSERTION_VARIANTS.get(label)
     if not variants:
-        return _fill("ASSERT_FAIL: Unknown failure at cycle {cycle}")
-    return _fill(random.choice(variants))
+        return _fill("ASSERT_FAIL: Unknown failure at cycle {cycle}", rng)
+    return _fill(rng.choice(variants), rng)
 
 
-def _suffix() -> str:
-    return _fill(random.choice(_SUFFIX_LINES))
+def _suffix(rng: random.Random) -> str:
+    return _fill(rng.choice(_SUFFIX_LINES), rng)
 
 
 def augment_sample(row: Dict, n_aug: int, rng: random.Random) -> List[Dict]:
@@ -186,13 +186,13 @@ def augment_sample(row: Dict, n_aug: int, rng: random.Random) -> List[Dict]:
         # Strategy 1: noise injection (50% probability, 1–4 extra lines)
         noise = ""
         if rng.random() > 0.5:
-            noise = _noise_prefix(rng.randint(1, 4))
+            noise = _noise_prefix(rng, rng.randint(1, 4))
 
         # Strategy 2: assertion variation
-        core_assertion = _alternate_assertion(label)
+        core_assertion = _alternate_assertion(label, rng)
 
         # Strategy 3: cycle jitter (already in _fill via random cycle)
-        suffix = _suffix()
+        suffix = _suffix(rng)
 
         aug["log"] = noise + core_assertion + "\n" + suffix
         aug["augmented"] = True
