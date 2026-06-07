@@ -146,12 +146,14 @@ def main() -> None:
             args.model_name,
             quantization_config=bnb_config,
             device_map="auto" if bnb_config else None,
+            low_cpu_mem_usage=True,
         )
     else:
         model = AutoModelForCausalLM.from_pretrained(
             args.model_name,
             quantization_config=bnb_config,
             device_map="auto" if bnb_config else None,
+            low_cpu_mem_usage=True,
         )
         model.config.pad_token_id = tokenizer.pad_token_id
 

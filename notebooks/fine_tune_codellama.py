@@ -20,6 +20,7 @@ Usage in Google Colab:
 from __future__ import annotations
 
 import argparse
+import gc
 import json
 import os
 import sys
@@ -116,6 +117,7 @@ def run_training(
         model_name,
         quantization_config=bnb_config,
         device_map="auto",
+        low_cpu_mem_usage=True,
     )
     model.config.use_cache = False  # Disable cache for training (enabled during inference)
     model = prepare_model_for_kbit_training(model)
@@ -167,6 +169,7 @@ def run_training(
         logging_steps=10,
         save_strategy="epoch" if val_ds else "steps",
         save_steps=100 if not val_ds else None,
+        save_total_limit=1,                  # Frugality: Optimize disk space (112.6 GB)
         evaluation_strategy="epoch" if val_ds else "no",
         fp16=True,
         bf16=False,
@@ -174,6 +177,7 @@ def run_training(
         gradient_checkpointing=True,
         report_to="none",
         dataset_text_field="text",
+        dataset_num_proc=1,                  # System RAM: Avoid duplicating memory over multiple CPU workers
         max_steps=max_steps,
     )
 
@@ -198,6 +202,13 @@ def run_training(
     )
     print(f"\n[SUCCESS] Fine-tuning complete. LoRA adapters saved to: {output_dir}")
 
+    # Explicit memory cleanup to free up VRAM and CPU memory before merge
+    del trainer
+    del model
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
 
 # ---------------------------------------------------------------------------
 # Model Merging
@@ -211,15 +222,19 @@ def run_merging(model_name: str, adapter_dir: Path, merged_dir: Path) -> None:
     print(f"Base model: {model_name}")
     print(f"Adapter: {adapter_dir}")
 
-    # Restart GPU or clear cache to ensure System RAM & VRAM is free before loading unquantized model
+    # Explicitly clear System RAM & VRAM before loading the full FP16 base model
+    gc.collect()
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
 
-    print("Loading base model in FP16 (loading to CPU first to prevent GPU OOM during merge)...")
+    # System RAM: Loading FP16 model (14GB) on 12.7GB CPU RAM will crash Colab.
+    # GPU RAM: Loading on T4 GPU (15GB VRAM) directly with low_cpu_mem_usage=True fits safely.
+    print("Loading base model in FP16 directly to GPU with low_cpu_mem_usage=True...")
     base_model = AutoModelForCausalLM.from_pretrained(
         model_name,
         torch_dtype=torch.float16,
-        device_map="cpu",
+        device_map="auto",
+        low_cpu_mem_usage=True,
     )
     tokenizer = AutoTokenizer.from_pretrained(model_name)
 
@@ -233,7 +248,15 @@ def run_merging(model_name: str, adapter_dir: Path, merged_dir: Path) -> None:
     merged_dir.mkdir(parents=True, exist_ok=True)
     merged_model.save_pretrained(str(merged_dir))
     tokenizer.save_pretrained(str(merged_dir))
-    print("[SUCCESS] Merged model saved successfully!")
+    
+    # Free memory from merging step
+    del merged_model
+    del peft_model
+    del base_model
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    print("[SUCCESS] Merged model saved successfully and memory cleared!")
 
 
 # ---------------------------------------------------------------------------
@@ -273,6 +296,7 @@ def run_benchmark(model_dir: Path, test_dataset: Path) -> None:
         str(model_dir),
         quantization_config=bnb_config,
         device_map="auto",
+        low_cpu_mem_usage=True,
     )
     model.eval()
 
