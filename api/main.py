@@ -40,20 +40,32 @@ def health() -> dict:
 
 @app.post("/classify", response_model=ClassifyResponse)
 def classify(req: ClassifyRequest) -> ClassifyResponse:
+    # 1. Validation: Reject excessively large logs to prevent resource exhaustion
+    if len(req.log) > 100000:
+        raise HTTPException(
+            status_code=400,
+            detail="Log length exceeds maximum limit of 100,000 characters."
+        )
+
+    # 2. Safety Truncation: Keep only the end of the log where simulator errors occur
+    log_content = req.log
+    if len(log_content) > 50000:
+        log_content = "... [TRUNCATED] ...\n" + log_content[-50000:]
+
     use_server = os.getenv("MODEL_SERVER_ENABLED", "1") == "1"
     if use_server:
         try:
-            result = _breaker.call(classify_via_server, req.log)
+            result = _breaker.call(classify_via_server, log_content)
         except ServiceUnavailableError as exc:
             if os.getenv("MODEL_SERVER_FALLBACK", "1") == "1":
-                result = classify_log(req.log)
+                result = classify_log(log_content)
             else:
                 raise HTTPException(status_code=503, detail=str(exc)) from exc
         except Exception as exc:
             if os.getenv("MODEL_SERVER_FALLBACK", "1") == "1":
-                result = classify_log(req.log)
+                result = classify_log(log_content)
             else:
                 raise HTTPException(status_code=502, detail=str(exc)) from exc
     else:
-        result = classify_log(req.log)
+        result = classify_log(log_content)
     return ClassifyResponse(**_apply_confidence_gate(result))
