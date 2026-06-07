@@ -88,6 +88,8 @@ Verification engineers spend **40–60% of their time** manually triaging simula
 
 ## Architecture
 
+![VeriLog AI Architecture](assets/architecture_diagram.png)
+
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                      VeriLog AI System                          │
@@ -362,6 +364,8 @@ python -m metrics.dashboard
 ```
 
 ### Current Metrics (February 23, 2026)
+
+![VeriLog AI Metrics Dashboard](assets/dashboard_screenshot.png)
 
 | Metric | Value | Notes |
 |:---|:---|:---|
