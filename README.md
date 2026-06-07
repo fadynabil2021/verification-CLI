@@ -9,6 +9,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
+![Project diagram](assets/CLIdemo.png)
+---
+
 
 ## Table of Contents
 
