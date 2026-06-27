@@ -10,7 +10,7 @@ Quick Start (Google Colab T4):
     # Cell 1: Clone & install
     !git clone https://github.com/fadynabil/verilog-ai.git
     %cd verilog-ai
-    !pip install -q -U torch bitsandbytes transformers peft accelerate datasets trl
+    !pip install -q -U torch bitsandbytes transformers peft accelerate datasets trl torchao
 
     # Cell 2: Data pipeline
     !PYTHONPATH=. python -m data.generate_dataset --no-sim --all-modules

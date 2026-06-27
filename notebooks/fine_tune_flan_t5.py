@@ -12,7 +12,7 @@ verification log classification dataset.
 │  # Cell 1: Clone & install                                             │
 │  !git clone https://github.com/fadynabil/verilog-ai.git                │
 │  %cd verilog-ai                                                        │
-│  !pip install -q -U transformers datasets peft accelerate torch        │
+│  !pip install -q -U transformers datasets peft accelerate torch torchao│
 │                                                                        │
 │  # Cell 2: Generate data pipeline (no Verilator required)              │
 │  !PYTHONPATH=. python -m data.generate_dataset --no-sim --all-modules  │
