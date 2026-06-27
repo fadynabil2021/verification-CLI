@@ -228,7 +228,7 @@ def run_training(
         per_device_train_batch_size=batch_size,
         gradient_accumulation_steps=gradient_accumulation_steps,
         learning_rate=lr,
-        warmup_ratio=0.03,
+        warmup_steps=max(1, int(max_steps * 0.03)),
         lr_scheduler_type="cosine",
         logging_steps=10,
         save_strategy="steps",
@@ -245,13 +245,22 @@ def run_training(
         max_steps=max_steps,
     )
 
-    trainer = SFTTrainer(
-        model=model,
-        tokenizer=tokenizer,
-        train_dataset=train_ds,
-        eval_dataset=val_ds,
-        args=sft_config,
-    )
+    import transformers
+    trainer_kwargs = {
+        "model": model,
+        "train_dataset": train_ds,
+        "eval_dataset": val_ds,
+        "args": sft_config,
+    }
+    
+    # Handle transformers v4.46+ deprecation of 'tokenizer'
+    v_parts = transformers.__version__.split('.')
+    if int(v_parts[0]) > 4 or (int(v_parts[0]) == 4 and int(v_parts[1]) >= 46):
+        trainer_kwargs["processing_class"] = tokenizer
+    else:
+        trainer_kwargs["tokenizer"] = tokenizer
+
+    trainer = SFTTrainer(**trainer_kwargs)
 
     # 5. Train & save
     print(f"\n[5/5] Training started (max_steps={max_steps})...")

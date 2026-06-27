@@ -295,7 +295,7 @@ def train_stage_a(
         per_device_train_batch_size = batch_size,
         gradient_accumulation_steps = 1,
         max_steps                   = 2 if dry_run else max_steps,
-        warmup_ratio                = 0.1,
+        warmup_steps                = max(1, int((2 if dry_run else max_steps) * 0.1)),
         logging_steps               = 5,
         # Save strategy
         save_strategy               = "steps",
@@ -314,15 +314,24 @@ def train_stage_a(
         report_to                   = "none",
     )
 
-    trainer = Trainer(
-        model         = model,
-        args          = training_args,
-        train_dataset = train_ds,
-        eval_dataset  = val_ds,
-        tokenizer     = tokenizer,
-        data_collator = collator,
-        callbacks     = callbacks,
-    )
+    import transformers
+    trainer_kwargs = {
+        "model": model,
+        "args": training_args,
+        "train_dataset": train_ds,
+        "eval_dataset": val_ds,
+        "data_collator": collator,
+        "callbacks": callbacks,
+    }
+    
+    # Handle transformers v4.46+ deprecation of 'tokenizer'
+    v_parts = transformers.__version__.split('.')
+    if int(v_parts[0]) > 4 or (int(v_parts[0]) == 4 and int(v_parts[1]) >= 46):
+        trainer_kwargs["processing_class"] = tokenizer
+    else:
+        trainer_kwargs["tokenizer"] = tokenizer
+
+    trainer = Trainer(**trainer_kwargs)
 
     # ── 4. Train ───────────────────────────────────────────────────────
     print(f"\n[4/5] Training started (max_steps={training_args.max_steps})...")
